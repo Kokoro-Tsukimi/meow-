@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>喵咖魔法书店 · 控制台</title>
+
+    <!-- 防闪烁主题注入：渲染前就把 data-theme 写好，避免刷新闪一下 -->
+    <!-- admin 是青/金双色（非明暗），不读系统偏好，默认 cyan -->
+    <script>
+      (function () {
+        var saved = localStorage.getItem('meow-admin-theme');
+        var theme = (saved === 'cyan' || saved === 'gold') ? saved : 'cyan';
+        document.documentElement.setAttribute('data-theme', theme);
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

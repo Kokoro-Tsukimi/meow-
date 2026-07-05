@@ -1,0 +1,588 @@
+@import "tailwindcss";
+
+/* ============================================================
+   喵咖魔法书店 · Admin 控制台 · 机甲风主题地基
+   ------------------------------------------------------------
+   设计语言: 曜石黑 + 机甲灰 + 荧光强调色 + 直角硬边 + 单边描边
+   - 登录页: 直接暗色定死(不切换), 见 .mecha-login-* 系列
+   - 内部界面: 双主题切换 <html data-theme="cyan|gold">
+     · 两套共用同一套黑+灰地基, 仅强调色不同, 样式零差异
+     · cyan = 电光蓝 #00D4FF (默认)
+     · gold = 荣耀金 #FFD700
+   - 全走 CSS 变量, Tailwind v4 写法(@import "tailwindcss")
+   ============================================================ */
+
+/* ---------- 字体: 纯系统字体栈 (开源无第三方字体版权隐患) ---------- */
+
+/* ============================================================
+   一、地基变量 (黑+灰, 两套主题完全共用, 永不变)
+   ============================================================ */
+
+:root {
+  /* 底层背景: 曜石黑 + 机甲灰 */
+  --m-bg-0: #000000;        /* 最深: 页面底 / 登录页底 (曜石黑) */
+  --m-bg-1: #0e1115;        /* 侧栏 */
+  --m-bg-2: #16181d;        /* 卡片 */
+  --m-bg-3: #1d1f26;        /* 卡片内嵌 / 输入框聚焦底 */
+  --m-bg-input: #0a0c0f;    /* 输入框底 */
+  --m-mecha-gray: #2C2C34;  /* 机甲灰: 按钮底 / 模块阴影 / 描边底 */
+
+  /* 描边 (默认走机甲灰, 强调描边由主题色覆盖) */
+  --m-border: #2C2C34;      /* 默认硬边 = 机甲灰 */
+  --m-border-soft: #1c1e24; /* 更弱的分隔线 */
+  --m-border-strong: #3a3a44;
+
+  /* 文字 */
+  --m-text: #e8edf2;        /* 主文字 */
+  --m-text-sub: #a8b3bf;    /* 次级 */
+  --m-text-mute: #7a8694;   /* 弱化 / label */
+  --m-text-faint: #5a6470;  /* 最弱 / 占位 / 时间戳 */
+
+  /* 功能语义色 (不随主题变, 表状态/正负, 与 user 端同规矩) */
+  --m-ok: #2dd4a7;          /* 正常 / 进账 / 可用 */
+  --m-warn: #e0a23a;        /* 警告 */
+  --m-danger: #d8704a;      /* 异常 / 扣费 / 危险 / 登出 */
+  --m-danger-bg: rgba(216, 112, 74, 0.1);
+
+  --m-radius: 4px;          /* 机甲风: 小直角 */
+}
+
+/* ============================================================
+   二、主题强调色 (唯一区别: 青 ↔ 金)
+   ------------------------------------------------------------
+   data-theme 未设置时默认走青色(配合 index.html 防闪烁脚本)。
+   ============================================================ */
+
+/* 青 (默认) */
+:root,
+:root[data-theme="cyan"] {
+  --m-accent: #00D4FF;                       /* 电光蓝 */
+  --m-accent-dim: rgba(0, 212, 255, 0.1);    /* 选中态背景 */
+  --m-accent-glow: rgba(0, 212, 255, 0.12);  /* 聚焦外发光 */
+  --m-accent-text: #06212a;                  /* 青底上的深字 */
+}
+
+/* 金 */
+:root[data-theme="gold"] {
+  --m-accent: #FFD700;                        /* 荣耀金 */
+  --m-accent-dim: rgba(255, 215, 0, 0.1);
+  --m-accent-glow: rgba(255, 215, 0, 0.14);
+  --m-accent-text: #2a2200;                   /* 金底上的深字 */
+}
+
+/* ============================================================
+   二、全局基底
+   ============================================================ */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
+  background-color: var(--m-bg-0);
+  color: var(--m-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============================================================
+   三、登录页 (暗色定死, 不参与主题切换)
+   ============================================================ */
+
+.mecha-login-bg {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--m-bg-0);
+  position: relative;
+  overflow: hidden;
+}
+
+/* 极淡的 45° 青色扫描斜纹 (机甲质感, 几乎不可见) */
+.mecha-login-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    135deg,
+    transparent,
+    transparent 38px,
+    rgba(0, 212, 255, 0.025) 38px,
+    rgba(0, 212, 255, 0.025) 39px
+  );
+  pointer-events: none;
+}
+
+/* 缓慢横向流动的数据流线 (护眼: 低亮度 + 慢速) */
+.mecha-dataflow {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(0, 212, 255, 0.35),
+    transparent
+  );
+  opacity: 0.5;
+}
+.mecha-dataflow.line-a {
+  top: 28%;
+  animation: mecha-flow 9s linear infinite;
+}
+.mecha-dataflow.line-b {
+  top: 67%;
+  animation: mecha-flow 13s linear infinite;
+  animation-delay: 2.5s;
+}
+@keyframes mecha-flow {
+  0%   { transform: translateX(-60%); opacity: 0; }
+  20%  { opacity: 0.5; }
+  80%  { opacity: 0.5; }
+  100% { transform: translateX(60%); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mecha-dataflow { animation: none; opacity: 0.18; }
+}
+
+/* 登录卡片: 左侧电光蓝竖条 + 直角 */
+.mecha-login-card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 380px;
+  background: var(--m-bg-2);
+  border: 1px solid var(--m-border-strong);
+  border-left: 3px solid var(--m-accent);
+  border-radius: var(--m-radius);
+  padding: 32px;
+}
+
+.mecha-login-eyebrow {
+  font-size: 11px;
+  color: var(--m-accent);
+  letter-spacing: 3px;
+  margin-bottom: 6px;
+}
+.mecha-login-title {
+  font-size: 20px;
+  color: var(--m-text);
+  font-weight: 500;
+  margin: 0 0 24px;
+}
+
+.mecha-label {
+  display: block;
+  font-size: 12px;
+  color: var(--m-text-mute);
+  margin-bottom: 6px;
+}
+
+/* ============================================================
+   四、通用表单控件 (登录页 + 内部界面共用)
+   ============================================================ */
+
+.mecha-input {
+  width: 100%;
+  height: 38px;
+  background: var(--m-bg-input);
+  border: 1px solid var(--m-border-strong);
+  border-radius: 3px;
+  padding: 0 12px;
+  color: var(--m-text);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.mecha-input::placeholder { color: var(--m-text-faint); }
+.mecha-input:focus {
+  border-color: var(--m-accent);
+  box-shadow: 0 0 0 3px var(--m-accent-glow);
+}
+.mecha-input:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* 主按钮: 实心青底深字 (呼应 user 端) */
+.mecha-btn {
+  width: 100%;
+  height: 40px;
+  background: var(--m-accent);
+  color: var(--m-accent-text);
+  border: none;
+  border-radius: 3px;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: filter 0.18s ease, transform 0.08s ease;
+}
+.mecha-btn:hover { filter: brightness(1.08); }
+.mecha-btn:active { transform: scale(0.985); }
+.mecha-btn:disabled { opacity: 0.5; cursor: not-allowed; filter: none; }
+
+/* 错误提示条 */
+.mecha-error {
+  font-size: 13px;
+  color: var(--m-danger);
+  background: var(--m-danger-bg);
+  border: 1px solid var(--m-danger);
+  border-radius: 3px;
+  padding: 9px 12px;
+}
+
+/* ============================================================
+   五、侧栏 Layout (内部界面)
+   ============================================================ */
+
+.mecha-sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 235px;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  background: var(--m-bg-1);
+  border-right: 1px solid var(--m-border);
+  padding: 20px 12px;
+}
+
+.mecha-brand {
+  font-size: 15px;
+  color: var(--m-text);
+  font-weight: 500;
+  padding: 0 6px 2px;
+}
+.mecha-brand-sub {
+  font-size: 10px;
+  color: var(--m-text-faint);
+  letter-spacing: 2px;
+  padding: 0 6px 18px;
+}
+
+.mecha-nav {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: none;        /* Firefox 隐藏滚动条 */
+}
+.mecha-nav::-webkit-scrollbar { width: 0; height: 0; }  /* Webkit 隐藏 */
+
+/* 导航项: 默认态 */
+.mecha-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 10px;
+  margin-bottom: 3px;
+  border-radius: 0 3px 3px 0;
+  border-left: 2px solid transparent;
+  color: var(--m-text-sub);
+  font-size: 13px;
+  font-weight: 400;
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.mecha-nav-item:hover {
+  background: var(--m-bg-2);
+  color: var(--m-text);
+}
+.mecha-nav-item svg { flex-shrink: 0; }
+
+/* 导航项: 选中态 —— 青底 + 青竖条 + 青字 (修好"选中文字消失"bug 的关键) */
+.mecha-nav-item.active {
+  background: var(--m-accent-dim);
+  border-left-color: var(--m-accent);
+  color: var(--m-accent);
+  font-weight: 500;
+}
+
+/* 侧栏底部: 主题切换 + 登出 */
+.mecha-side-bottom {
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid var(--m-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mecha-logout {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: var(--m-danger);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 6px 4px;
+  font-family: inherit;
+  transition: filter 0.15s ease;
+}
+.mecha-logout:hover { filter: brightness(1.15); }
+
+/* 主题切换按钮 (内部界面用, 登录页不用) */
+.mecha-theme-toggle {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--m-border-strong);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--m-text-sub);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.mecha-theme-toggle:hover {
+  color: var(--m-accent);
+  border-color: var(--m-accent);
+}
+
+/* ============================================================
+   六、内容区通用 class (内部各功能页装修时复用)
+   ============================================================ */
+
+.mecha-content { flex: 1; padding: 22px; min-width: 0; }
+
+.mecha-page-title {
+  font-size: 17px;
+  color: var(--m-text);
+  font-weight: 500;
+  margin: 0 0 3px;
+}
+.mecha-page-sub {
+  font-size: 12px;
+  color: var(--m-text-faint);
+  margin: 0 0 20px;
+}
+
+/* 卡片: 直角 + 顶部可选硬边 (语义色) */
+.mecha-card {
+  background: var(--m-bg-2);
+  border: 1px solid var(--m-border);
+  border-radius: 3px;
+  padding: 16px;
+}
+.mecha-card.accent-top  { border-top: 2px solid var(--m-accent); border-radius: 0 0 3px 3px; }
+.mecha-card.ok-top      { border-top: 2px solid var(--m-ok);     border-radius: 0 0 3px 3px; }
+.mecha-card.danger-top  { border-top: 2px solid var(--m-danger); border-radius: 0 0 3px 3px; }
+
+.mecha-stat-label { font-size: 11px; color: var(--m-text-mute); margin-bottom: 8px; }
+.mecha-stat-value { font-size: 22px; font-weight: 600; }
+.mecha-stat-value.accent { color: var(--m-accent); }
+.mecha-stat-value.ok     { color: var(--m-ok); }
+.mecha-stat-value.danger { color: var(--m-danger); }
+
+/* 列表行内小操作按钮 (编辑/上架/删除等, 描边色由行内 style 指定语义色) */
+.mecha-row-btn {
+  font-size: 11px;
+  padding: 4px 12px;
+  background: transparent;
+  border: 1px solid var(--m-border-strong);
+  border-radius: 2px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s ease;
+  white-space: nowrap;
+}
+.mecha-row-btn:hover { background: var(--m-bg-3); }
+
+/* 等宽代码/密钥展示块 (CDK出炉清单/token明文等) */
+.mecha-code-block {
+  background: var(--m-bg-input);
+  border: 1px solid var(--m-border);
+  border-radius: 3px;
+  padding: 14px;
+  font-family: 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+  font-size: 13px;
+  color: var(--m-text-sub);
+  line-height: 1.7;
+}
+
+/* ===== 弹窗 (登记/充值等, fixed遮罩+居中卡片) ===== */
+.mecha-modal-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(0, 0, 0, 0.55);
+}
+.mecha-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 50;
+  width: 90%;
+  max-width: 420px;
+  background: var(--m-bg-2);
+  border: 1px solid var(--m-border-strong);
+  border-left: 3px solid var(--m-accent);
+  border-radius: 4px;
+  padding: 24px;
+}
+.mecha-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.mecha-modal-title {
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--m-text);
+  margin: 0;
+}
+.mecha-modal-close {
+  background: transparent;
+  border: none;
+  color: var(--m-text-mute);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.mecha-modal-close:hover { color: var(--m-text); }
+/* 次级按钮 (取消等, 描边灰) */
+.mecha-btn-ghost {
+  background: transparent;
+  border: 1px solid var(--m-border-strong);
+  border-radius: 3px;
+  color: var(--m-text-sub);
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s ease;
+}
+.mecha-btn-ghost:hover { background: var(--m-bg-3); }
+
+/* ===== 右侧滑入抽屉 (规则编辑等) ===== */
+@keyframes mecha-drawer-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+.mecha-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 100%;
+  max-width: 440px;
+  background: var(--m-bg-2);
+  border-left: 3px solid var(--m-accent);
+  z-index: 50;
+  overflow-y: auto;
+  animation: mecha-drawer-in 0.28s ease-out;
+}
+/* 标签碎片 (关键词/模型等小标签) */
+.mecha-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 11px;
+  border-radius: 2px;
+  background: var(--m-bg-3);
+  color: var(--m-text-sub);
+  border: 1px solid var(--m-border);
+}
+
+/* ============================================================
+   七、危险态按钮 & 确认弹窗 & Toast (C窗新增, 2026-06-30)
+   ------------------------------------------------------------
+   ConfirmDialog.tsx / Toast.tsx 配套样式,原创机甲风,
+   不套用 user 端配色(两端主题体系完全独立)。
+   ============================================================ */
+
+/* 危险确认按钮 (删除/封号/拉黑等确认弹窗的确认键, 实心红) */
+.mecha-btn-danger {
+  width: 100%;
+  height: 40px;
+  background: var(--m-danger);
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: filter 0.18s ease, transform 0.08s ease;
+}
+.mecha-btn-danger:hover { filter: brightness(1.08); }
+.mecha-btn-danger:active { transform: scale(0.985); }
+.mecha-btn-danger:disabled { opacity: 0.5; cursor: not-allowed; filter: none; }
+
+/* 确认弹窗正文 (ConfirmDialog.tsx 专用, 支持 \n 换行) */
+.mecha-confirm-msg {
+  font-size: 13px;
+  color: var(--m-text-sub);
+  line-height: 1.6;
+  white-space: pre-line;
+  margin: 0 0 20px;
+}
+
+/* ===== Toast 提示条 (Toast.tsx 专用, 固定右下角堆叠) ===== */
+.mecha-toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+.mecha-toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 260px;
+  max-width: 360px;
+  background: var(--m-bg-2);
+  border: 1px solid var(--m-border-strong);
+  border-left: 3px solid var(--m-ok);
+  border-radius: var(--m-radius);
+  padding: 12px 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  animation: mecha-toast-in 0.22s ease-out;
+}
+.mecha-toast.error { border-left-color: var(--m-danger); }
+.mecha-toast.info  { border-left-color: var(--m-accent); }
+.mecha-toast.leaving { animation: mecha-toast-out 0.18s ease-in forwards; }
+
+.mecha-toast-icon {
+  font-size: 15px;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+.mecha-toast-msg {
+  font-size: 13px;
+  color: var(--m-text);
+  line-height: 1.5;
+  white-space: pre-line;
+  flex: 1;
+}
+.mecha-toast-close {
+  background: transparent;
+  border: none;
+  color: var(--m-text-mute);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+  transition: color 0.15s ease;
+}
+.mecha-toast-close:hover { color: var(--m-text); }
+
+@keyframes mecha-toast-in {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes mecha-toast-out {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(24px); }
+}

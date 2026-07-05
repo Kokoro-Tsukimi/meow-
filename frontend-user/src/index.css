@@ -1,0 +1,1104 @@
+@import "tailwindcss";
+@theme {
+  --color-latte: #8B6344;
+  --color-paw-pink: #FFB7C5;
+  --color-parchment: #FAF7F0;
+  --color-cream: #FFF8F0;
+  --color-mocha: #5C3D2E;
+  --color-foam: #E8D5C4;
+}
+
+@layer base {
+  :root {
+    --latte: #8B6344;
+    --paw-pink: #FFB7C5;
+    --parchment: #FAF7F0;
+    --cream: #FFF8F0;
+    --mocha: #5C3D2E;
+    --foam: #E8D5C4;
+  }
+
+  body {
+    background-color: var(--parchment);
+    color: var(--mocha);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+  }
+
+  a {
+    text-decoration: none;
+    color: inherit;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--foam);
+    border-radius: 9999px;
+  }
+}
+
+@layer utilities {
+  .animate-paw-pop {
+    animation: paw-pop 0.6s ease-out forwards;
+  }
+
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  .animate-bean-bounce {
+    animation: bean-bounce 0.4s ease-in-out;
+  }
+
+  .animate-fall-down {
+    animation: fall-down 2s ease-in forwards;
+  }
+}
+
+@keyframes paw-pop {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.2); opacity: 1; }
+  80% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(0); opacity: 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes bean-bounce {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+@keyframes fall-down {
+  0% { transform: translateY(-100px); opacity: 0; }
+  10% { opacity: 1; }
+  80% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(30px); opacity: 0; }
+}
+
+/* ====================================================
+   【G阶段 新增】双主题系统 (亮:涂鸦咖啡厅 / 暗:深夜咖啡馆)
+   ==================================================== */
+
+/* === 全局基础字体(H-1 去鸿蒙后改为系统字体栈, 类名保留以兼容 .tsx) === */
+.font-harmony {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+/* === 亮色主题 (涂鸦咖啡厅) === */
+:root, [data-theme="light"] {
+  --color-theme-bg-split-1: #00CED1; /* 松石蓝 */
+  --color-theme-bg-split-2: #FF1493; /* 艳玫红 */
+
+  --color-panel-bg: rgba(255, 255, 255, 0.45);
+  --color-panel-border: rgba(255, 20, 147, 0.6); /* 玫红描边作为签名 */
+  --panel-blur: 24px;
+  --panel-radius: 24px;
+  --panel-clip: none;
+  --panel-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+
+  /* 摩卡色 Fallback 已修正为 #5C3D2E */
+  --color-text-title: var(--color-mocha, #5C3D2E);
+  --color-text-sub: var(--color-latte, #8C7A6B);
+
+  --color-input-bg: rgba(255, 255, 255, 0.7);
+  --color-input-border: var(--color-foam, #EAE0D5);
+  --color-input-focus: #00CED1;
+  --input-glow: 0 0 0 3px rgba(0, 206, 209, 0.3);
+  --input-radius: 16px;
+  --input-clip: none;
+
+  --color-btn-bg: var(--color-latte, #8C7A6B);
+  --color-btn-text: #FFFFFF;
+  --color-btn-border: transparent;
+  --btn-radius: 16px;
+  --btn-clip: none;
+  --color-link: var(--color-mocha, #5C3D2E);
+
+  --color-error: #EF4444;
+}
+
+/* === 暗色主题 (深夜咖啡馆) === */
+[data-theme="dark"] {
+  --color-theme-bg-split-1: #2A2520; /* 暖黑/咖啡渣 */
+  --color-theme-bg-split-2: #2A2520; /* 纯色收敛不撞色 */
+
+  --color-panel-bg: #1C1815;
+  --color-panel-border: #00D4FF; /* 电光蓝荧光 */
+  --panel-blur: 0px;
+  --panel-radius: 0px;
+  --panel-clip: polygon(0 0, calc(100% - 24px) 0, 100% 24px, 100% 100%, 24px 100%, 0 calc(100% - 24px));
+  --panel-shadow: 0 0 20px rgba(0, 212, 255, 0.15);
+
+  --color-text-title: #E8E3DF;
+  --color-text-sub: #A89F96;
+
+  --color-input-bg: #25201C;
+  --color-input-border: #3D352F;
+  --color-input-focus: #00D4FF;
+  --input-glow: 0 0 10px rgba(0, 212, 255, 0.3);
+  --input-radius: 0px;
+  --input-clip: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+
+  --color-btn-bg: transparent;
+  --color-btn-text: #00D4FF;
+  --color-btn-border: #00D4FF;
+  --btn-radius: 0px;
+  --btn-clip: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px));
+  --color-link: #00D4FF;
+
+  --color-error: #FF6B6B;
+}
+
+/* === 纯 CSS 视觉控制类 (保持 JSX 干净) === */
+
+.theme-layout-bg {
+  background: linear-gradient(135deg, var(--color-theme-bg-split-1) 50%, var(--color-theme-bg-split-2) 50%);
+}
+
+/* 亮色：弥散光 mesh 背景（多层 radial-gradient 自然交融，无硬边）
+   保留品牌色：松石蓝 #00CED1 + 艳玫红 #FF1493 */
+[data-theme="light"] .theme-layout-bg {
+  background-color: #0a6c70;
+  background-image:
+    /* 右上：玫红大色块 */
+    radial-gradient(circle at 85% 12%, #FF1493 0%, rgba(255, 20, 147, 0) 62%),
+    /* 左下：亮粉荧光高亮核心 */
+    radial-gradient(circle at 20% 80%, #FF4FA8 0%, rgba(255, 79, 168, 0) 46%),
+    /* 右下：明亮松石蓝晕染 */
+    radial-gradient(circle at 82% 86%, #00CED1 0%, rgba(0, 206, 209, 0) 58%),
+    /* 左上：松石蓝底色 */
+    radial-gradient(circle at 14% 22%, #00CED1 0%, rgba(0, 206, 209, 0) 64%),
+    /* 中偏右：暗玫红过渡，连接上下粉调 */
+    radial-gradient(circle at 64% 46%, #C71078 0%, rgba(199, 16, 120, 0) 50%),
+    /* 全局深青底衬：让高亮更通透发光 */
+    radial-gradient(circle at 40% 50%, #0a5a66 0%, #073e47 100%);
+  background-size: 100% 100%;
+}
+
+/* 暗色：保持深夜咖啡馆收敛深褐（不受 mesh 影响） */
+[data-theme="dark"] .theme-layout-bg {
+  background: #2A2520;
+}
+
+.theme-panel-wrapper {
+  filter: drop-shadow(var(--panel-shadow));
+}
+
+.theme-panel {
+  background-color: var(--color-panel-bg);
+  backdrop-filter: blur(var(--panel-blur));
+  border-radius: var(--panel-radius);
+  clip-path: var(--panel-clip);
+  box-shadow: inset 0 0 0 1px var(--color-panel-border);
+}
+[data-theme="dark"] .theme-panel {
+  box-shadow: inset 0 0 0 2px var(--color-panel-border);
+}
+
+.theme-text-title { color: var(--color-text-title); }
+.theme-text-sub { color: var(--color-text-sub); }
+
+.theme-input {
+  background-color: var(--color-input-bg);
+  border: 2px solid var(--color-input-border);
+  border-radius: var(--input-radius);
+  clip-path: var(--input-clip);
+  color: var(--color-text-title);
+}
+.theme-input:focus {
+  border-color: var(--color-input-focus);
+  box-shadow: var(--input-glow);
+}
+[data-theme="dark"] .theme-input {
+  border: none;
+  box-shadow: inset 0 0 0 2px var(--color-input-border);
+}
+[data-theme="dark"] .theme-input:focus {
+  box-shadow: inset 0 0 0 2px var(--color-input-focus), var(--input-glow);
+}
+
+.theme-button {
+  background-color: var(--color-btn-bg);
+  color: var(--color-btn-text);
+  border: 2px solid var(--color-btn-border);
+  border-radius: var(--btn-radius);
+  clip-path: var(--btn-clip);
+}
+.theme-button:hover {
+  filter: brightness(1.15);
+}
+
+.ease-spring {
+  transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.theme-link { color: var(--color-link); }
+.theme-border-error { border-color: var(--color-error); }
+.theme-text-error { color: var(--color-error); }
+
+/* ====================================================
+   【G阶段 新增·登录页】流体背景 + MEOW + 反馈动效
+   ==================================================== */
+
+/* --- 流体 blob 背景场 --- */
+.meow-blob-field {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.meow-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.55;
+  mix-blend-mode: multiply;
+  will-change: transform;
+}
+/* 亮色：松石蓝 / 艳玫红 / 辅助粉，晕染在浅底上 */
+.meow-blob-1 { width: 55vw; height: 55vw; top: -12%; left: -10%; background: var(--color-theme-bg-split-2, #FF1493); animation: meow-blob-float 14s ease-in-out infinite; }
+.meow-blob-2 { width: 50vw; height: 50vw; top: 18%; right: -12%; background: var(--color-theme-bg-split-1, #00CED1); animation: meow-blob-float 18s ease-in-out infinite reverse; }
+.meow-blob-3 { width: 48vw; height: 48vw; bottom: -18%; left: 22%; background: #FF69B4; animation: meow-blob-float 16s ease-in-out infinite; }
+
+/* 暗色：深褐底上极淡的电光蓝光晕，收敛护眼 */
+[data-theme="dark"] .meow-blob {
+  filter: blur(110px);
+  opacity: 0.22;
+  mix-blend-mode: screen;
+}
+[data-theme="dark"] .meow-blob-1 { background: #00D4FF; }
+[data-theme="dark"] .meow-blob-2 { background: #1f6b78; }
+[data-theme="dark"] .meow-blob-3 { background: #3a2f28; }
+
+@keyframes meow-blob-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%      { transform: translate(4%, 6%) scale(1.08); }
+  66%      { transform: translate(-5%, -4%) scale(0.95); }
+}
+
+/* --- 超大 MEOW 背景字 --- */
+.meow-bg-word {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-weight: 900;
+  font-size: 22vw;
+  letter-spacing: -0.04em;
+  pointer-events: none;
+  user-select: none;
+  z-index: 1;
+  color: #ffffff;
+  opacity: 0.12;
+  mix-blend-mode: overlay;
+}
+[data-theme="dark"] .meow-bg-word {
+  color: #00D4FF;
+  opacity: 0.05;
+  mix-blend-mode: screen;
+}
+
+/* --- 处理中：按钮内小转圈 --- */
+.meow-spinner {
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  display: inline-block;
+  animation: meow-spin 0.7s linear infinite;
+}
+@keyframes meow-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* --- 成功斜切幕：高速 wipe，急速进场+阻尼急停 --- */
+.meow-wipe {
+  position: fixed;
+  inset: -25%;
+  width: 150%;
+  height: 150%;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 斜切：从右上高速扫入；加宽 150% 保证 skew 后无三角缺口 */
+  background: linear-gradient(135deg, #00CED1 0%, #FF1493 100%);
+  transform: translateX(110%) skewX(-12deg);
+  animation: meow-wipe-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+[data-theme="dark"] .meow-wipe {
+  background: #14110e;
+  box-shadow: inset 0 0 0 3px #00D4FF, 0 0 60px rgba(0, 212, 255, 0.4);
+}
+@keyframes meow-wipe-in {
+  0%   { transform: translateX(110%) skewX(-12deg); }
+  100% { transform: translateX(0) skewX(-12deg); }
+}
+
+/* 幕布内容：猫爪 + 文字，延迟一点冒出来（错落感） */
+.meow-wipe-content {
+  transform: skewX(12deg); /* 抵消父级倾斜，内容摆正 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  opacity: 0;
+  animation: meow-wipe-content-in 0.4s ease-out 0.3s forwards;
+}
+@keyframes meow-wipe-content-in {
+  0%   { opacity: 0; transform: skewX(12deg) scale(0.7); }
+  60%  { opacity: 1; transform: skewX(12deg) scale(1.12); }
+  100% { opacity: 1; transform: skewX(12deg) scale(1); }
+}
+.meow-wipe-text {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-weight: 900;
+  font-size: 1.6rem;
+  letter-spacing: 0.1em;
+  color: #ffffff;
+}
+[data-theme="dark"] .meow-wipe-text {
+  color: #00D4FF;
+  text-shadow: 0 0 12px rgba(0,212,255,0.7);
+}
+
+/* ====================================================
+   【G阶段 新增】主题切换按钮（公共组件 ThemeToggle）
+   ==================================================== */
+.meow-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 9999px;
+  cursor: pointer;
+  position: relative;
+  border: 1px solid rgba(128, 128, 128, 0.25);
+  /* 半透明圆底：浮在任意主题背景上都清晰 */
+  background: rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(8px);
+  color: var(--color-mocha, #5C3D2E);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+              background 0.3s ease, box-shadow 0.3s ease;
+}
+.meow-theme-toggle:hover {
+  transform: scale(1.1);
+}
+.meow-theme-toggle:active {
+  transform: scale(0.92);
+}
+
+/* 暗色下：玻璃底变深，图标变电光蓝荧光 */
+[data-theme="dark"] .meow-theme-toggle {
+  background: rgba(28, 24, 21, 0.55);
+  border-color: rgba(0, 212, 255, 0.4);
+  color: #00D4FF;
+  box-shadow: 0 0 12px rgba(0, 212, 255, 0.25);
+}
+
+/* 固定在左上角（登录/注册/找回三页用） */
+.meow-theme-toggle--fixed {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 40;
+}
+/* 内嵌模式（以后导航栏用，不固定） */
+.meow-theme-toggle--inline {
+  position: relative;
+}
+
+/* 两个图标叠放，淡入淡出切换 */
+.meow-toggle-icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: scale(0.6) rotate(-30deg);
+  transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.meow-toggle-icon.is-active {
+  opacity: 1;
+  transform: scale(1) rotate(0deg);
+}
+.meow-toggle-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* ====================================================
+   【G阶段 新增·登录页亮色专属】弹幕 + 魔法阵 + 星尘 + 过渡带
+   注意：以下装饰仅在亮色主题显示，暗色一律隐藏（深夜咖啡馆保持收敛）
+   ==================================================== */
+
+/* 默认隐藏所有亮色装饰，仅 light 主题显示 */
+.meow-rune,
+.meow-stardust,
+.meow-danmu-field {
+  display: none;
+}
+[data-theme="light"] .meow-rune,
+[data-theme="light"] .meow-stardust,
+[data-theme="light"] .meow-danmu-field {
+  display: block;
+}
+
+/* --- 旋转呼吸魔法阵：浮在左侧，慢转 + 明暗呼吸，点题"魔法" --- */
+.meow-rune {
+  position: absolute;
+  top: 50%;
+  left: -6%;
+  width: 60vh;
+  height: 60vh;
+  transform: translateY(-50%);
+  z-index: 1;
+  pointer-events: none;
+  animation: meow-rune-spin 90s linear infinite,
+             meow-rune-breath 6s ease-in-out infinite;
+}
+.meow-rune svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 0.6;
+}
+.meow-rune polygon { stroke-width: 0.5; }
+.meow-rune-ticks line { stroke-width: 1.2; }
+@keyframes meow-rune-spin {
+  to { transform: translateY(-50%) rotate(360deg); }
+}
+@keyframes meow-rune-breath {
+  0%, 100% { opacity: 0.10; }
+  50%      { opacity: 0.22; }
+}
+
+/* --- 星尘光点：飘浮闪烁 --- */
+.meow-stardust {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+.meow-star {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 6px 1px rgba(255, 255, 255, 0.8);
+  opacity: 0;
+  animation: meow-star-twinkle 5s ease-in-out infinite;
+}
+.meow-star-0 { top: 14%; left: 18%; animation-delay: 0s;   }
+.meow-star-1 { top: 28%; left: 72%; animation-delay: 0.8s; width: 3px; height: 3px; }
+.meow-star-2 { top: 62%; left: 12%; animation-delay: 1.6s; }
+.meow-star-3 { top: 78%; left: 64%; animation-delay: 2.4s; width: 4px; height: 4px; }
+.meow-star-4 { top: 40%; left: 88%; animation-delay: 3.2s; }
+.meow-star-5 { top: 86%; left: 34%; animation-delay: 1.1s; width: 3px; height: 3px; }
+.meow-star-6 { top: 20%; left: 46%; animation-delay: 2.0s; }
+@keyframes meow-star-twinkle {
+  0%, 100% { opacity: 0; transform: scale(0.6); }
+  50%      { opacity: 0.9; transform: scale(1.1); }
+}
+
+/* --- 喵语弹幕：从右往左飘，大小交叠半透明白字 --- */
+.meow-danmu-field {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
+}
+.meow-danmu {
+  position: absolute;
+  left: 0;
+  white-space: nowrap;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-weight: 800;
+  color: #ffffff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  will-change: transform;
+  animation-name: meow-danmu-fly;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+@keyframes meow-danmu-fly {
+  from { transform: translateX(100vw); }
+  to   { transform: translateX(-110%); }
+}
+
+/* ====================================================
+   【G阶段 新增】用户端 Layout 侧栏 + 接力转场 + 磁悬浮弹入
+   ==================================================== */
+
+.meow-layout {
+  display: flex;
+  min-height: 100vh;
+  background: var(--page-bg, var(--parchment));
+}
+/* Layout 用到的底色变量（亮暗） */
+:root, [data-theme="light"] {
+  --page-bg: #FAF7F0;
+  --content-bg: #FFF8F0;
+  --side-bg: rgba(255,255,255,0.55);
+  --side-border-c: rgba(255,20,147,0.18);
+  --side-blur-v: 18px;
+  --nav-text: #8B6344;
+  --nav-sub: #b29a86;
+  --nav-active-bg: rgba(255,20,147,0.12);
+  --nav-active-text: #FF1493;
+  --nav-hover-bg: rgba(255,20,147,0.06);
+  --side-radius-v: 20px;
+  --nav-radius-v: 14px;
+  --logout-c: #e0457b;
+}
+[data-theme="dark"] {
+  --page-bg: #221d19;
+  --content-bg: #2A2520;
+  --side-bg: #1C1815;
+  --side-border-c: rgba(0,212,255,0.35);
+  --side-blur-v: 0px;
+  --nav-text: #C9BFB6;
+  --nav-sub: #8a8078;
+  --nav-active-bg: rgba(0,212,255,0.10);
+  --nav-active-text: #00D4FF;
+  --nav-hover-bg: rgba(0,212,255,0.06);
+  --side-radius-v: 0px;
+  --nav-radius-v: 0px;
+  --logout-c: #ff6b9d;
+}
+
+/* 侧栏 */
+.meow-sidebar {
+  width: 232px;
+  flex-shrink: 0;
+  background: var(--side-bg);
+  backdrop-filter: blur(var(--side-blur-v));
+  border-right: 1px solid var(--side-border-c);
+  border-radius: 0 var(--side-radius-v) var(--side-radius-v) 0;
+  display: flex;
+  flex-direction: column;
+  padding: 28px 16px 20px;
+  transition: background .5s ease, border-color .5s ease;
+  /* 粘在视口、固定满屏高：右侧内容再长，侧栏底部（退出/主题）也永远可见 */
+  height: 100vh;
+  position: sticky;
+  top: 0;
+}
+[data-theme="dark"] .meow-sidebar {
+  box-shadow: inset -2px 0 0 0 #00D4FF, 0 0 24px rgba(0,212,255,0.08);
+}
+
+.meow-brand {
+  font-weight: 900;
+  font-size: 1.35rem;
+  letter-spacing: 0.06em;
+  color: var(--color-text-title, #5C3D2E);
+  padding: 0 12px 4px;
+  line-height: 1.3;
+}
+.meow-brand small {
+  display: block;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  color: var(--nav-sub);
+  margin-top: 4px;
+}
+.meow-brand-divider {
+  height: 1px;
+  margin: 18px 8px 14px;
+  background: linear-gradient(90deg, var(--nav-active-text), transparent);
+  opacity: 0.5;
+}
+
+.meow-nav { display: flex; flex-direction: column; gap: 4px; flex: 1; overflow-y: auto; min-height: 0; scrollbar-width: none; -ms-overflow-style: none; }
+.meow-nav::-webkit-scrollbar { width: 0; height: 0; display: none; }
+.meow-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--nav-radius-v);
+  color: var(--nav-text);
+  font-size: 0.96rem;
+  font-weight: 600;
+  cursor: pointer;
+  position: relative;
+  text-decoration: none;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  transition: background .2s ease, color .2s ease, transform .15s cubic-bezier(0.34,1.56,0.64,1);
+}
+.meow-nav-item:hover { background: var(--nav-hover-bg); transform: translateX(3px); }
+
+/* 选中态：文字用强调色，永远可见（避开 admin 那个 bug） */
+.meow-nav-item.active {
+  background: var(--nav-active-bg);
+  color: var(--nav-active-text);
+  font-weight: 800;
+}
+.meow-nav-item.active::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 18%; bottom: 18%;
+  width: 4px;
+  border-radius: 0 4px 4px 0;
+  background: var(--nav-active-text);
+}
+[data-theme="dark"] .meow-nav-item.active { box-shadow: inset 0 0 0 1px #00D4FF; }
+
+.meow-side-bottom { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; }
+.meow-side-divider { height: 1px; margin: 0 8px 8px; background: var(--color-foam, #E8D5C4); opacity: 0.5; }
+.meow-toggle-row { display: flex; align-items: center; padding: 4px 10px; }
+.meow-nav-item.logout { color: var(--logout-c); font-weight: 700; }
+.meow-nav-item.logout:hover { background: rgba(224,69,123,0.08); }
+
+/* 内容区 */
+.meow-content {
+  flex: 1;
+  background: var(--content-bg);
+  min-height: 100vh;
+  overflow-y: auto;
+  transition: background .5s ease;
+}
+
+/* ===== 接力转场：色块往左下揭开（呼应登录右上扫入） ===== */
+.meow-wipe-handoff {
+  /* 一出现就是盖满状态（继承 .meow-wipe 的 inset:-25%/150% 尺寸），然后揭开 */
+  transform: translateX(0) skewX(-12deg);
+  animation: meow-wipe-reveal 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.35s forwards;
+}
+/* 接力块文字立即显示（不延迟），与登录幕布无缝接上，交接不闪 */
+.meow-wipe-handoff .meow-wipe-content {
+  opacity: 1;
+  animation: none;
+}
+@keyframes meow-wipe-reveal {
+  0%   { transform: translateX(0) skewX(-12deg); }
+  100% { transform: translateX(-130%) skewX(-12deg); }
+}
+
+/* ===== 内容磁悬浮弹入：快→慢 阻尼急停 ===== */
+.meow-content-enter > * {
+  animation: meow-magnet-in 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.55s both;
+}
+@keyframes meow-magnet-in {
+  0%   { opacity: 0; transform: translateY(40px) scale(0.96); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ===== 侧栏 + 导航项交错弹入（仅接力转场时） ===== */
+.meow-layout.entering .meow-sidebar {
+  animation: meow-side-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.5s both;
+}
+@keyframes meow-side-in {
+  0%   { opacity: 0; transform: translateX(-30px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+/* 导航项一个个错落弹入 */
+.meow-layout.entering .meow-nav-item {
+  animation: meow-navitem-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.meow-layout.entering .meow-nav .meow-nav-item:nth-child(1) { animation-delay: 0.65s; }
+.meow-layout.entering .meow-nav .meow-nav-item:nth-child(2) { animation-delay: 0.72s; }
+.meow-layout.entering .meow-nav .meow-nav-item:nth-child(3) { animation-delay: 0.79s; }
+.meow-layout.entering .meow-nav .meow-nav-item:nth-child(4) { animation-delay: 0.86s; }
+.meow-layout.entering .meow-nav .meow-nav-item:nth-child(5) { animation-delay: 0.93s; }
+.meow-layout.entering .meow-nav .meow-nav-item:nth-child(6) { animation-delay: 1.00s; }
+@keyframes meow-navitem-in {
+  0%   { opacity: 0; transform: translateX(-18px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+/* ====================================================
+   【G阶段 新增】功能页通用主题 class（Dashboard/Bills/Topup 等共用）
+   实色卡片风格（区别于登录页的毛玻璃 theme-panel）
+   ==================================================== */
+
+/* 功能页卡片 */
+.meow-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  transition: background .4s ease, border-color .4s ease, transform .3s cubic-bezier(0.34,1.56,0.64,1), box-shadow .3s ease;
+}
+.meow-card.hoverable:hover { transform: translateY(-4px); box-shadow: 0 10px 30px rgba(0,0,0,0.06); }
+[data-theme="dark"] .meow-card { box-shadow: inset 0 0 0 1px var(--card-border); }
+[data-theme="dark"] .meow-card.hoverable:hover { box-shadow: inset 0 0 0 1px var(--accent-c), 0 0 20px rgba(0,212,255,0.12); }
+
+/* 功能页文字 */
+.meow-h { color: var(--text-title-c); font-weight: 800; }
+.meow-text { color: var(--text-body-c); }
+.meow-text-sub { color: var(--text-sub-c); }
+.meow-accent { color: var(--accent-c); }
+
+/* 功能页主按钮（玫红/电光蓝强调） */
+.meow-btn-primary {
+  background: var(--accent-c);
+  color: var(--accent-on);
+  font-weight: 800;
+  border: none;
+  border-radius: var(--btn-radius);
+  cursor: pointer;
+  transition: transform .2s cubic-bezier(0.34,1.56,0.64,1), filter .2s ease, box-shadow .2s ease;
+}
+.meow-btn-primary:hover:not(:disabled) { transform: scale(1.04); box-shadow: 0 6px 18px rgba(255,20,147,0.25); }
+[data-theme="dark"] .meow-btn-primary:hover:not(:disabled) { box-shadow: 0 0 16px rgba(0,212,255,0.4); }
+.meow-btn-primary:active:not(:disabled) { transform: scale(0.96); }
+.meow-btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* 功能页次按钮（描边） */
+.meow-btn-ghost {
+  background: transparent;
+  color: var(--accent-c);
+  border: 2px solid var(--accent-c);
+  font-weight: 700;
+  border-radius: var(--btn-radius);
+  cursor: pointer;
+  transition: all .2s ease;
+}
+.meow-btn-ghost:hover:not(:disabled) { background: var(--accent-c); color: var(--accent-on); }
+
+/* 强调横幅（问候语用） */
+.meow-banner {
+  background: var(--banner-bg);
+  color: var(--banner-text);
+  border-radius: var(--card-radius);
+  font-weight: 700;
+  transition: background .4s ease;
+}
+[data-theme="dark"] .meow-banner { box-shadow: inset 0 0 0 1px var(--accent-c); }
+
+/* 危险区 */
+.meow-danger-zone {
+  border-radius: var(--card-radius);
+  border: 2px solid var(--danger-border);
+  background: var(--danger-bg);
+}
+.meow-danger-title { color: var(--danger-text); font-weight: 800; }
+.meow-danger-text { color: var(--danger-text); opacity: 0.85; }
+.meow-btn-danger {
+  border: 2px solid var(--danger-strong);
+  color: var(--danger-strong);
+  background: transparent;
+  border-radius: var(--btn-radius);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .2s ease;
+}
+.meow-btn-danger:hover:not(:disabled) { background: var(--danger-strong); color: #fff; }
+.meow-btn-danger-solid {
+  background: var(--danger-strong);
+  color: #fff;
+  border: none;
+  border-radius: var(--btn-radius);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .2s ease;
+}
+.meow-btn-danger-solid:hover:not(:disabled) { filter: brightness(1.1); }
+.meow-btn-danger-solid:disabled, .meow-btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* 浮层提示条 */
+.meow-toast { border-radius: var(--btn-radius); font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,0.18); }
+.meow-toast-info { background: var(--accent-c); color: var(--accent-on); }
+.meow-toast-success { background: #22c55e; color: #fff; }
+
+/* 模态框 */
+.meow-modal-mask { position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,0.4); backdrop-filter: blur(2px); }
+.meow-modal {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  z-index: 50; width: 90%; max-width: 420px; padding: 2rem;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+}
+[data-theme="dark"] .meow-modal { box-shadow: 0 0 0 1px var(--accent-c), 0 20px 60px rgba(0,0,0,0.5); }
+
+/* 功能页用到的颜色变量 */
+:root, [data-theme="light"] {
+  --card-bg: #FFF8F0;
+  --card-border: #EFE6DA;
+  --card-radius: 24px;
+  --btn-radius: 16px;
+  --text-title-c: #5C3D2E;
+  --text-body-c: #6b5444;
+  --text-sub-c: #a8917d;
+  --accent-c: #FF1493;
+  --accent-on: #ffffff;
+  --banner-bg: #8B6344;
+  --banner-text: #ffffff;
+  --danger-border: #fecdd3;
+  --danger-bg: #fff1f2;
+  --danger-text: #b91c1c;
+  --danger-strong: #ef4444;
+}
+[data-theme="dark"] {
+  --card-bg: #211c18;
+  --card-border: #3a322b;
+  --card-radius: 4px;
+  --btn-radius: 4px;
+  --text-title-c: #E8E3DF;
+  --text-body-c: #C9BFB6;
+  --text-sub-c: #8a8078;
+  --accent-c: #00D4FF;
+  --accent-on: #0a1416;
+  --banner-bg: #1C2A2E;
+  --banner-text: #00D4FF;
+  --danger-border: #5a2a2a;
+  --danger-bg: #2a1818;
+  --danger-text: #ff8a8a;
+  --danger-strong: #ef4444;
+}
+
+/* 输入框错误态（功能页用） */
+.meow-input-error { border-color: var(--danger-strong) !important; }
+/* 成功态按钮（兑换成功等） */
+.meow-btn-success {
+  background: #22c55e; color: #fff; font-weight: 800;
+  border: none; border-radius: var(--btn-radius); cursor: default;
+}
+
+/* 菜单页：访问模式 badge + 价格框 + 卡片左边框（双主题） */
+.meow-model-card { border-left: 4px solid var(--accent-c); }
+.meow-model-card.meow-badge-whitelist { border-left-color: var(--accent-c); }
+.meow-model-card.meow-badge-public { border-left-color: var(--text-sub-c); }
+
+.meow-badge.meow-badge-whitelist {
+  background: var(--badge-wl-bg); color: var(--badge-wl-text);
+}
+.meow-badge.meow-badge-public {
+  background: var(--badge-pub-bg); color: var(--badge-pub-text);
+}
+
+.meow-price-box { background: var(--price-box-bg); }
+
+:root, [data-theme="light"] {
+  --badge-wl-bg: #FFE4E1; --badge-wl-text: #B85450;
+  --badge-pub-bg: #E8D5C4; --badge-pub-text: #5C3D2E;
+  --price-box-bg: #FAF7F0;
+}
+[data-theme="dark"] {
+  --badge-wl-bg: rgba(0,212,255,0.12); --badge-wl-text: #00D4FF;
+  --badge-pub-bg: #2e2922; --badge-pub-text: #C9BFB6;
+  --price-box-bg: #1a1612;
+}
+
+/* ===== 账单页专属 ===== */
+.meow-bill-row { background: var(--price-box-bg); }
+.meow-bill-row:hover { border-left-color: var(--accent-c) !important; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+
+.meow-amount-plus { color: #22c55e; }
+.meow-amount-minus { color: var(--accent-c); }
+[data-theme="light"] .meow-amount-minus { color: #ef6b8a; }
+
+.meow-filter-box {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+}
+.meow-date-input { color-scheme: light; }
+[data-theme="dark"] .meow-date-input { color-scheme: dark; }
+
+.meow-section-line { border-bottom: 1px solid var(--card-border); }
+.meow-modal-head { background: var(--card-bg); }
+
+.meow-code-block {
+  background: var(--code-bg);
+  color: var(--text-body-c);
+  border: 1px solid var(--card-border);
+}
+
+:root, [data-theme="light"] { --code-bg: #FAF7F0; }
+[data-theme="dark"] { --code-bg: #14110e; }
+
+/* 诊断模式货架进度条轨道 */
+.meow-progress-track { background: var(--price-box-bg); }
+
+/* ====================================================
+   G-6 公告富文本(Markdown 渲染区 .meow-md)
+   Dashboard 公告卡 + 公告历史页共用
+   ==================================================== */
+.meow-md { line-height: 1.7; }
+.meow-md > :first-child { margin-top: 0; }
+.meow-md > :last-child { margin-bottom: 0; }
+.meow-md p { margin: 0.4em 0; }
+.meow-md a { text-decoration: underline; color: inherit; word-break: break-all; }
+.meow-md h1, .meow-md h2, .meow-md h3, .meow-md h4 { color: var(--text-title-c); font-weight: 800; margin: 0.8em 0 0.3em; }
+.meow-md h1 { font-size: 1.25em; }
+.meow-md h2 { font-size: 1.15em; }
+.meow-md h3, .meow-md h4 { font-size: 1.05em; }
+.meow-md ul, .meow-md ol { margin: 0.4em 0; padding-left: 1.4em; }
+.meow-md ul { list-style: disc; }
+.meow-md ol { list-style: decimal; }
+.meow-md li { margin: 0.15em 0; }
+.meow-md code { background: var(--code-bg); border: 1px solid var(--card-border); border-radius: 6px; padding: 0.1em 0.35em; font-size: 0.9em; }
+.meow-md pre { background: var(--code-bg); border: 1px solid var(--card-border); border-radius: 10px; padding: 0.8em 1em; overflow-x: auto; margin: 0.5em 0; }
+.meow-md pre code { background: none; border: none; padding: 0; }
+.meow-md blockquote { border-left: 3px solid var(--accent-c); padding-left: 0.8em; margin: 0.5em 0; opacity: 0.9; }
+.meow-md img { max-width: 100%; border-radius: 10px; }
+.meow-md hr { border: none; border-top: 1px solid var(--card-border); margin: 0.8em 0; }
+.meow-md strong { color: var(--text-body-c); }
+.meow-md table { border-collapse: collapse; margin: 0.5em 0; }
+.meow-md th, .meow-md td { border: 1px solid var(--card-border); padding: 0.3em 0.7em; }
+
+/* G-4 公告历史分页按钮(轻量描边风, 与实心主按钮区分) */
+.meow-page-btn {
+  border: 1px solid var(--card-border);
+  border-radius: var(--btn-radius);
+  background: var(--card-bg);
+  color: var(--text-body-c);
+  padding: 0.5rem 1.1rem;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+.meow-page-btn:hover:not(:disabled) { border-color: var(--accent-c); color: var(--accent-c); transform: translateY(-1px); }
+.meow-page-btn:active:not(:disabled) { transform: translateY(0) scale(0.97); }
+.meow-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ====================================================
+   【M窗 新增】user 端手机响应式适配 · 第一批
+   Layout 汉堡抽屉 + 顶栏 + 遮罩 + 抽屉错落弹入
+   断点: 768px (与 Tailwind md: 同一条线, 卡片竖排与抽屉同步切换)
+   ==================================================== */
+
+/* --- 顶栏与遮罩: 桌面端默认不存在, 仅小屏媒体查询内启用 --- */
+.meow-topbar { display: none; }
+.meow-drawer-mask { display: none; }
+
+@media (max-width: 768px) {
+
+  /* 布局改纵向: 顶栏在上、内容在下(抽屉是 fixed 不占文档流) */
+  .meow-layout { flex-direction: column; }
+
+  /* --- 手机顶栏: 与侧栏同色系毛玻璃, sticky 吸顶 --- */
+  .meow-topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    padding: 10px 14px;
+    background: var(--side-bg);
+    backdrop-filter: blur(var(--side-blur-v));
+    -webkit-backdrop-filter: blur(var(--side-blur-v));
+    border-bottom: 1px solid var(--side-border-c);
+    transition: background .5s ease, border-color .5s ease;
+  }
+  .meow-topbar-brand {
+    font-weight: 900;
+    font-size: 1.05rem;
+    letter-spacing: 0.05em;
+    color: var(--color-text-title, #5C3D2E);
+  }
+  .meow-burger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border: none;
+    background: transparent;
+    border-radius: 10px;
+    color: var(--nav-text);
+    cursor: pointer;
+    font-family: inherit;
+    transition: background .2s ease, color .2s ease;
+  }
+  .meow-burger:active { background: var(--nav-hover-bg); color: var(--nav-active-text); }
+
+  /* --- 侧栏变身左滑抽屉: 默认藏在屏外, .open 滑入 --- */
+  /* 宽度 min(75vw, 280px): 不满屏, 右侧留缝可见内容(小昙拍板) */
+  .meow-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    height: 100dvh;
+    width: min(75vw, 280px);
+    z-index: 60;
+    transform: translateX(-105%);
+    transition: transform .35s cubic-bezier(0.22, 1, 0.36, 1),
+                background .5s ease, border-color .5s ease;
+    border-radius: 0 var(--side-radius-v) var(--side-radius-v) 0;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
+  }
+  .meow-sidebar.open { transform: translateX(0); }
+
+  /* --- 半透明遮罩: 淡入淡出, 关闭态不拦截点击 --- */
+  .meow-drawer-mask {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: rgba(30, 20, 15, 0.42);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .3s ease;
+  }
+  .meow-drawer-mask.show { opacity: 1; pointer-events: auto; }
+
+  /* --- 抽屉打开时锁背景滚动(Layout 往 body 挂类, 仅小屏生效) --- */
+  body.meow-drawer-lock { overflow: hidden; }
+
+  /* --- 登录接力动效小屏适配: 桌面版"侧栏整体弹入"会覆盖抽屉的
+     translateX(-105%) 收纳位, 导致屏外侧栏闪现, 小屏禁用之;
+     全屏接力幕布与内容磁悬浮弹入不受影响, 原样保留 --- */
+  .meow-layout.entering .meow-sidebar { animation: none; }
+  .meow-layout.entering .meow-nav-item { animation: none; }
+
+  /* --- 抽屉每次拉开: 导航项错落弹入(桌面登录接力的灵魂动效
+     移植到抽屉舞台, 弹簧曲线不变, 节奏加快适配高频开合) ---
+     (写在 entering 禁用规则之后: 同特异度后者胜, 抽屉动效优先) */
+  .meow-sidebar.open .meow-nav-item {
+    animation: meow-navitem-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+  .meow-sidebar.open .meow-nav .meow-nav-item:nth-child(1) { animation-delay: 0.05s; }
+  .meow-sidebar.open .meow-nav .meow-nav-item:nth-child(2) { animation-delay: 0.10s; }
+  .meow-sidebar.open .meow-nav .meow-nav-item:nth-child(3) { animation-delay: 0.15s; }
+  .meow-sidebar.open .meow-nav .meow-nav-item:nth-child(4) { animation-delay: 0.20s; }
+  .meow-sidebar.open .meow-nav .meow-nav-item:nth-child(5) { animation-delay: 0.25s; }
+  .meow-sidebar.open .meow-nav .meow-nav-item:nth-child(6) { animation-delay: 0.30s; }
+
+}
+
+/* ====================================================
+   【G-7.1 新增】recharts 图表移动端点按黑框修复
+   Bar/Area 图形自带可聚焦属性, 移动端点按会画出焦点黑框;
+   图表信息全靠悬浮/点按提示框呈现, 移除轮廓不损失可用性
+   ==================================================== */
+.recharts-wrapper,
+.recharts-wrapper * {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
