@@ -115,6 +115,7 @@ CREATE TABLE IF NOT EXISTS Logs (
   latency_upstream_ms INT DEFAULT 0,                     -- F.5: 上游推理耗时(ms)
   latency_proxy_ms INT DEFAULT 0,                        -- F.5: 网关内部开销(ms, 鉴权/分组/SSE 透传等)
   is_stream BOOLEAN DEFAULT FALSE,                       -- F5.2: 流式响应标志(从响应 Content-Type 推断)
+  is_estimated BOOLEAN NOT NULL DEFAULT FALSE,           -- F5.4: 估算账单标记(TRUE=客人断连、按已发字符估 tokens; FALSE=拿到真实 usage)
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

@@ -988,7 +988,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
            b.reference_id, b.type, b.balance_after,
            l.status_code, l.prompt_tokens, l.cached_tokens, l.completion_tokens,
            l.latency_upstream_ms, l.latency_proxy_ms,
-           l.is_stream
+           l.is_stream, l.is_estimated
          FROM Bills b
          LEFT JOIN Logs l ON l.trace_id = b.reference_id
          WHERE b.id = ? AND b.user_id = ?`,
@@ -1020,6 +1020,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
         latency_proxy_ms: bill.latency_proxy_ms,
         // F5.2: mysql2 对 BOOLEAN(TINYINT(1)) 默认返回 0 / 1; LEFT JOIN 失配时为 null. 透传给前端.
         is_stream: bill.is_stream,
+        // F5.4: 估算账单标记. 1=断连估费(前端会亮琥珀色警告条), 0=正常账单, null=LEFT JOIN 失配
+        is_estimated: bill.is_estimated,
       };
 
       // 2. 读货架

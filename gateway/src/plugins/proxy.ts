@@ -427,6 +427,36 @@ function collectMessagesText(body: any): string {
   return text;
 }
 
+/**
+ * F.5.4: 断连白嫖漏洞的字符→tokens 估算器
+ * 原则:"宁少勿多"。实际 tokenizer 中文约 0.6~1 tok/字, 英文约 0.25~0.3 tok/字符;
+ * 我们用 CJK ÷ 2 (=0.5 tok/字, 低于真实值)、其他字符 ÷ 4 (=0.25 tok/字符, 也是低估),
+ * 保证估算 ≤ 真实用量。客人从这个漏洞里最多能"少付一点点", 不会被冤枉多收喵。
+ * (多模态图片/音频不计, 继续保持低估方向)
+ */
+function estimateTokensFromText(text: string): number {
+  if (!text) return 0;
+  let cjk = 0;
+  let other = 0;
+  for (const ch of text) {
+    const code = ch.codePointAt(0) || 0;
+    // CJK 常见范围:中日韩汉字 + 假名 + 韩文音节
+    if (
+      (code >= 0x4E00 && code <= 0x9FFF) ||   // 中文
+      (code >= 0x3040 && code <= 0x309F) ||   // 平假名
+      (code >= 0x30A0 && code <= 0x30FF) ||   // 片假名
+      (code >= 0x3400 && code <= 0x4DBF) ||   // CJK 扩展 A
+      (code >= 0xF900 && code <= 0xFAFF) ||   // CJK 兼容汉字
+      (code >= 0xAC00 && code <= 0xD7AF)      // 韩文音节
+    ) {
+      cjk++;
+    } else {
+      other++;
+    }
+  }
+  return Math.floor(cjk / 2) + Math.floor(other / 4);
+}
+
 // ============ E.3 Dry-Run 挂起术(吧台安检区)辅助 ============
 
 // 挂起请求的上下文暂存区(审批台展示用),TTL 到期自动销毁
@@ -686,15 +716,199 @@ export default async function proxyPlugin(fastify: FastifyInstance) {
     //      全部候选都失败 → 502。
     // ⚠️ 关键边界:一旦拿到可用响应并开始向客户端转发,就不能再换渠道了
     //   (流已经发出一半,换路会产生缝合怪响应),所以转移只发生在拿到响应头之前。
+    // F.5.4 学费笔记: req.raw (IncomingMessage) 的 close 事件是"请求体读完"时触发, 不是"客户端断开"时;
+    //   POST 请求 body 早在 Fastify 解析阶段就读完了, 之后客人断开 req.raw 的 close 不会再触发第二次.
+    //   正确监听点是 reply.raw (ServerResponse) 的 close, 它在底层 TCP 连接终止时触发.
+    //   两个都挂一份是双保险 (AbortController.abort 可重入, 后续 abort 是 no-op, 安全喵).
     const abortController = new AbortController();
-    req.raw.on('close', () => {
-      abortController.abort();
-    });
+    const onClientGone = () => abortController.abort();
+    req.raw.on('close', onClientGone);
+    reply.raw.on('close', onClientGone);
+
+    // F.5.4 变量提升: 断连时 catch 分支也要能读到这些, 才能估算+补结算
+    //   activeChannel: 断连时判断"上游有没有真的接单"的关键——空=整单免收, 非空=按估算收费
+    //   upstreamStartMs: latency_upstream_ms 的计时起点(0=从未起 → 免收)
+    //   estimatedCompletionChars: SSE 循环里只累加 delta.content 长度(不含 SSE 结构冗余), 断连估费用
+    //   cachedResponseBody: F.5 诊断货架的原文缓冲(断连场景也要入架, 方便店长回看不完整响应)
+    let activeChannel: ChannelInfo | null = null;
+    let upstreamStartMs = 0;
+    let promptTokens = 0;
+    let completionTokens = 0;
+    let cachedTokens: number | null = null;
+    let statusCode = 0;
+    let isResponseStream = false;
+    let estimatedCompletionChars = 0;
+    let cachedResponseBody = '';
+
+    // F.5.4: 结算函数 —— 正常路 & 断连路共用一份, 避免复制粘贴导致费率解析走两条路
+    //   isEstimated=true → 传入的 tokens 是估算值, 会写入 Logs.is_estimated=1 让前端亮警告条
+    const runBilling = (
+      pTokens: number,
+      cTokens: number,
+      cached: number | null,
+      isEstimated: boolean
+    ) => {
+      const user = req.user;
+      if (!user) return;
+      if (pTokens <= 0 && cTokens <= 0) return;
+
+      const latencyUpstreamMs = upstreamStartMs > 0 ? Date.now() - upstreamStartMs : 0;
+      const latencyProxyMs = (Date.now() - proxyStartMs) - latencyUpstreamMs;
+
+      setTimeout(async () => {
+        try {
+          // F.1.6 计费分流:
+          //   命中分组 → 用分组价(ModelGroups 主表,每 1M tokens、×10万存)→ 除 1_000_000
+          //   未命中(过渡期/老路)→ 原 ModelRates 三级回退(每 1K tokens)→ 除 1_000
+          // ⚠️ 两条路除数差 1000 倍,千万别混用,不然分组路径会贵 1000 倍喵!
+          const channelId = activeChannel?.id || 0;
+
+          let cost: number;
+          if (groupPricing) {
+            const promptPrice = groupPricing.prompt_price;
+            const completionPrice = groupPricing.completion_price;
+            cost = Math.ceil((pTokens * promptPrice + cTokens * completionPrice) / 1000000);
+            console.info(`[GATEWAY][分组计价][${trace_id}] 每百万定价 p=${promptPrice}/c=${completionPrice}, cost=${cost}${isEstimated ? ' [估算]' : ''}`);
+          } else {
+            // 费率查找(三级回退):专属 → 通用(channel_id=0) → MySQL 回源 → 代码兜底 1/2
+            let rates = await redis.hgetall(`gateway:rates:model:${channelId}:${model}`);
+            if (!rates.prompt_price && channelId !== 0) {
+              rates = await redis.hgetall(`gateway:rates:model:0:${model}`);
+              if (rates.prompt_price) {
+                console.info(`[GATEWAY][费率回退][${trace_id}] 渠道 ${channelId} 无专属费率,改用通用定价(channel_id=0)`);
+              }
+            }
+            if (!rates.prompt_price) {
+              const [rateRows]: any = await pool.query(
+                `SELECT channel_id, prompt_price, completion_price FROM ModelRates
+                 WHERE model_name = ? AND channel_id IN (?, 0)
+                 ORDER BY channel_id DESC LIMIT 1`,
+                [model, channelId]
+              );
+              if (rateRows.length > 0) {
+                const r = rateRows[0];
+                rates = {
+                  prompt_price: String(r.prompt_price),
+                  completion_price: String(r.completion_price),
+                };
+                await redis.hset(`gateway:rates:model:${r.channel_id}:${model}`, rates);
+                console.info(`[GATEWAY][费率回源][${trace_id}] 从 MySQL 恢复费率并写回 Redis (channel ${r.channel_id})`);
+              }
+            }
+            if (!rates.prompt_price) {
+              console.warn(`[GATEWAY][费率兜底][${trace_id}] 模型 ${model} 未配置费率,使用兜底价 1/2`);
+            }
+            const promptPrice = rates.prompt_price ? parseInt(rates.prompt_price, 10) : 1;
+            const completionPrice = rates.completion_price ? parseInt(rates.completion_price, 10) : 2;
+            cost = Math.ceil((pTokens * promptPrice + cTokens * completionPrice) / 1000);
+          }
+
+          const balanceKey = `gateway:user:balance:${user.id}`;
+          const usedKey = `gateway:user:used:${user.id}`;
+          const streamKey = 'gateway:stream:billing';
+
+          // 扣费 + 入队 合并进同一个 Lua 脚本,保证原子性
+          const luaScript = `
+local balance_key = KEYS[1]
+local used_key = KEYS[2]
+local stream_key = KEYS[3]
+local cost = tonumber(ARGV[1])
+local user_id = ARGV[2]
+local trace_id = ARGV[3]
+local model = ARGV[4]
+local channel_id = ARGV[5]
+local prompt_tokens = ARGV[6]
+local completion_tokens = ARGV[7]
+local token_id = ARGV[8]
+local status_code = ARGV[9]
+local latency_upstream_ms = ARGV[10]
+local latency_proxy_ms = ARGV[11]
+local is_stream = ARGV[12]
+local cached_tokens = ARGV[13]
+local is_estimated = ARGV[14]
+
+local current = redis.call('DECRBY', balance_key, cost)
+redis.call('INCRBY', used_key, cost)
+
+redis.call('XADD', stream_key, '*',
+  'trace_id', trace_id,
+  'user_id', user_id,
+  'model', model,
+  'cost', tostring(cost),
+  'channel_id', channel_id,
+  'prompt_tokens', prompt_tokens,
+  'completion_tokens', completion_tokens,
+  'token_id', token_id,
+  'status_code', status_code,
+  'latency_upstream_ms', latency_upstream_ms,
+  'latency_proxy_ms', latency_proxy_ms,
+  'is_stream', is_stream,
+  'cached_tokens', cached_tokens,
+  'is_estimated', is_estimated
+)
+
+if current <= 0 then
+  redis.call('RPUSH', 'gateway:events:arrears', user_id)
+  redis.call('LTRIM', 'gateway:events:arrears', -1000, -1)
+end
+
+return current
+          `;
+
+          const remaining = await redis.eval(
+            luaScript,
+            3,
+            balanceKey, usedKey, streamKey,
+            cost.toString(), user.id, trace_id, model, channelId.toString(),
+            pTokens.toString(), cTokens.toString(),
+            user.token_id || '',
+            String(statusCode || 0),
+            String(latencyUpstreamMs),
+            String(latencyProxyMs),
+            String(isResponseStream ? 1 : 0),
+            cached === null ? '' : String(cached),
+            isEstimated ? '1' : '0'                    // F5.4: 估算标记(worker 侧解析 → Logs.is_estimated)
+          );
+          console.info(`[GATEWAY][扣费+入队完成][${trace_id}] 扣除: ${cost}, 剩余: ${remaining}${isEstimated ? ' [估算账单]' : ''}`);
+
+        } catch (err: any) {
+          console.error(`[GATEWAY][扣费异常][${trace_id}]`, err.stack || err.message);
+        }
+      }, 0);
+    };
+
+    // F.5.4 补丁: 诊断货架入架也抽成闭包, 让正常路 & 断连路共用一份.
+    //   小昙的观察: 断连导致的不完整响应恰恰是最有价值的诊断样本, 店长翻货架能看到"到哪里模型开始复读了/胡言乱语了",
+    //   所以断连场景也要入架, 不能只在正常路调用. source 参数只影响日志, 不影响入架内容本身.
+    const saveToShelf = (source: '正常' | '断连') => {
+      const userIdForCache = req.user?.id;
+      if (!userIdForCache) return;
+      if (!cachedResponseBody) return;              // 上游啥都没送出来 → 无内容可入架
+      if (!isDebugCacheEnabled()) return;           // admin 总闸未开
+      setTimeout(async () => {
+        try {
+          const [debugRows]: any = await pool.query(
+            'SELECT debug_mode_enabled, debug_mode_expires_at FROM Users WHERE id = ?',
+            [userIdForCache]
+          );
+          if (debugRows.length === 0) return;
+          const u = debugRows[0];
+          if (!u.debug_mode_enabled) return;
+          if (!u.debug_mode_expires_at) return;
+          const userExpiresAtMs = new Date(u.debug_mode_expires_at).getTime();
+          if (userExpiresAtMs < Date.now()) return; // 诊断模式窗口期已过, 不再入架
+
+          // 三条件齐 → 写货架(整窗口期内所有 entry 共享同一个 expires_at, 窗口期结束统一被 purgeExpired 清掉)
+          await writeToShelf(Number(userIdForCache), trace_id, cachedResponseBody, userExpiresAtMs);
+          console.info(`[GATEWAY][F.5货架][${trace_id}] 已入架 ${(Buffer.byteLength(cachedResponseBody, 'utf8') / 1024).toFixed(1)}KB [${source}]`);
+        } catch (err: any) {
+          console.error(`[GATEWAY][F.5货架][${trace_id}] 写入失败(已吞, 不影响主响应):`, err.message);
+        }
+      }, 0);
+    };
 
     try {
       let upstream: { statusCode: number; headers: any; body: any } | null = null;
-      let activeChannel: ChannelInfo | null = null;
-      let upstreamStartMs = 0; // F.5: 算 latency_upstream_ms 用, for 循环每次尝试时重置, 最终成功那次的值就是最终值
 
       for (let i = 0; i < candidates.length; i++) {
         const ch = candidates[i];
@@ -751,7 +965,9 @@ export default async function proxyPlugin(fastify: FastifyInstance) {
         throw new Error('所有候选渠道均不可用');
       }
 
-      const { statusCode, headers, body: responseBody } = upstream;
+      // F.5.4: statusCode 赋给外层同名 let(断连时也能拿到; 用局部别名 sc 避免与外层 shadow)
+      const { statusCode: sc, headers, body: responseBody } = upstream;
+      statusCode = sc;
 
       reply.status(statusCode);
       
@@ -760,14 +976,15 @@ export default async function proxyPlugin(fastify: FastifyInstance) {
         reply.header('Content-Type', contentType);
       }
       
-      const isStream = contentType?.includes('text/event-stream');
+      // F.5.4: 复用外层 isResponseStream(断连估费时也要读)
+      isResponseStream = !!contentType?.includes('text/event-stream');
+      // 局部别名, 保持原代码 isStream 变量名可读
+      const isStream = isResponseStream;
 
-      let promptTokens = 0;
-      let completionTokens = 0;
-      // F5.3: 缓存命中 tokens。null = 上游未回传(与 0 = 明确零命中严格分家)。
+      // F.5.3: 缓存命中 tokens。null = 上游未回传(与 0 = 明确零命中严格分家)。
       // 两种方言都认: OpenAI 系 usage.prompt_tokens_details.cached_tokens
       //             DeepSeek 系 usage.prompt_cache_hit_tokens
-      let cachedTokens: number | null = null;
+      // F.5.4: promptTokens/completionTokens/cachedTokens/cachedResponseBody 已在 try 外声明, 这里不再重复 let
       const readCachedTokens = (usage: any): number | null => {
         const v = usage?.prompt_tokens_details?.cached_tokens;
         if (typeof v === 'number' && Number.isFinite(v)) return v;
@@ -775,7 +992,6 @@ export default async function proxyPlugin(fastify: FastifyInstance) {
         if (typeof d === 'number' && Number.isFinite(d)) return d;
         return null;
       };
-      let cachedResponseBody = ''; // F.5: 收集响应原文准备入诊断货架(流式累加 chunk / 非流式直接赋 data)
 
       // E.2: 命中 SHADOW 时,顺手把 AI 的回答内容攒下来,响应结束后随克隆体一起入队
       const shadowActive = shadowHits.length > 0;
@@ -813,10 +1029,14 @@ export default async function proxyPlugin(fastify: FastifyInstance) {
                   completionTokens = data.usage.completion_tokens || 0;
                   cachedTokens = readCachedTokens(data.usage);  // F5.3
                 }
-                // E.2: 影子模式下,把每个事件里的增量文字拼回完整回答(超过上限就不再攒了)
-                if (shadowActive && data.choices?.[0]?.delta?.content) {
-                  if (shadowContent.length < SHADOW_BODY_MAX_LEN) {
-                    shadowContent += data.choices[0].delta.content;
+                // F.5.4: 只累加真正的 delta.content 字符, 不含 SSE 结构冗余(data: 前缀/JSON 括号/\n\n 分隔),
+                //   断连时用这个数除以 4 估算 completion tokens, 保证"宁少勿多"
+                const deltaText = data.choices?.[0]?.delta?.content;
+                if (typeof deltaText === 'string' && deltaText.length > 0) {
+                  estimatedCompletionChars += deltaText.length;
+                  // E.2: 影子模式下,把每个事件里的增量文字拼回完整回答(超过上限就不再攒了)
+                  if (shadowActive && shadowContent.length < SHADOW_BODY_MAX_LEN) {
+                    shadowContent += deltaText;
                   }
                 }
               } catch {
@@ -882,178 +1102,13 @@ export default async function proxyPlugin(fastify: FastifyInstance) {
         }
       }
 
-      // F.5: 算 upstream / proxy 各自耗时(给 Logs 表两个 latency 字段; statusCode 直接用上面解构出的同名变量)
-      //   latency_upstream_ms: 纯上游耗时(undiciRequest 起 → 响应流结束)
-      //   latency_proxy_ms:    proxy 内部开销 = 总耗时 - upstream 耗时(鉴权/分组/SSE 透传等的总和)
-      const latencyUpstreamMs = Date.now() - upstreamStartMs;
-      const latencyProxyMs = (Date.now() - proxyStartMs) - latencyUpstreamMs;
+      // 阶段7 - 异步扣费(F.5.4: 抽出为 runBilling, 断连路径也复用同一份费率解析+Lua eval)
+      runBilling(promptTokens, completionTokens, cachedTokens, false);
 
-      // 阶段7 - 异步扣费
-      const user = req.user;
-      if (user && (promptTokens > 0 || completionTokens > 0)) {
-        setTimeout(async () => {
-          try {
-            // F.1.6 计费分流:
-            //   命中分组 → 用分组价(ModelGroups 主表,每 1M tokens、×10万存)→ 除 1_000_000
-            //   未命中(过渡期/老路)→ 原 ModelRates 三级回退(每 1K tokens)→ 除 1_000
-            // ⚠️ 两条路除数差 1000 倍,千万别混用,不然分组路径会贵 1000 倍喵!
-            // channelId 在两条计价路之外也要用(下面 Lua 入队记 channel_id),所以提到这里声明
-            const channelId = activeChannel?.id || 0;
-
-            let cost: number;
-            if (groupPricing) {
-              const promptPrice = groupPricing.prompt_price;
-              const completionPrice = groupPricing.completion_price;
-              cost = Math.ceil((promptTokens * promptPrice + completionTokens * completionPrice) / 1000000);
-              console.info(`[GATEWAY][分组计价][${trace_id}] 每百万定价 p=${promptPrice}/c=${completionPrice}, cost=${cost}`);
-            } else {
-              // 费率查找(三级回退):
-              //   ① 先按精确 channelId 找该渠道的专属费率;
-              //   ② 找不到,回退查 channel_id=0 的"通用定价"(对所有渠道生效,见 db-init.sql 约定);
-              //   ③ Redis 全 miss → 回源 MySQL ModelRates;还没有才用代码兜底价(prompt=1 / completion=2)。
-              // 之前的 bug:只查精确 channelId,渠道 id=1 但费率设在 0,导致永远兜底成 1/2。
-              let rates = await redis.hgetall(`gateway:rates:model:${channelId}:${model}`);
-
-              // ① 没命中专属费率 → 回退查通用定价(channel_id=0)
-              if (!rates.prompt_price && channelId !== 0) {
-                rates = await redis.hgetall(`gateway:rates:model:0:${model}`);
-                if (rates.prompt_price) {
-                  console.info(`[GATEWAY][费率回退][${trace_id}] 渠道 ${channelId} 无专属费率,改用通用定价(channel_id=0)`);
-                }
-              }
-
-              // ② Redis 全 miss → 回源 MySQL ModelRates(C+.x: Redis 重启丢数据后自愈)
-              //    一条 SQL 同时找"专属费率"和"通用定价(0)",优先专属;查到写回 Redis,下次就走缓存
-              if (!rates.prompt_price) {
-                const [rateRows]: any = await pool.query(
-                  `SELECT channel_id, prompt_price, completion_price FROM ModelRates
-                   WHERE model_name = ? AND channel_id IN (?, 0)
-                   ORDER BY channel_id DESC LIMIT 1`,
-                  [model, channelId]
-                );
-                if (rateRows.length > 0) {
-                  const r = rateRows[0];
-                  rates = {
-                    prompt_price: String(r.prompt_price),
-                    completion_price: String(r.completion_price),
-                  };
-                  await redis.hset(`gateway:rates:model:${r.channel_id}:${model}`, rates);
-                  console.info(`[GATEWAY][费率回源][${trace_id}] 从 MySQL 恢复费率并写回 Redis (channel ${r.channel_id})`);
-                }
-              }
-
-              // ③ MySQL 也没有 → 代码兜底价,并告警提示该补费率
-              if (!rates.prompt_price) {
-                console.warn(`[GATEWAY][费率兜底][${trace_id}] 模型 ${model} 未配置费率,使用兜底价 1/2`);
-              }
-
-              const promptPrice = rates.prompt_price ? parseInt(rates.prompt_price, 10) : 1;
-              const completionPrice = rates.completion_price ? parseInt(rates.completion_price, 10) : 2;
-              cost = Math.ceil((promptTokens * promptPrice + completionTokens * completionPrice) / 1000);
-            }
-            
-const balanceKey = `gateway:user:balance:${user.id}`;
-            const usedKey = `gateway:user:used:${user.id}`;
-            const streamKey = 'gateway:stream:billing';
-
-            // 扣费 + 入队 合并进同一个 Lua 脚本,保证原子性
-            // (要么"扣费和入队"同时成功,要么都不发生,杜绝"扣了钱没记账")
-            const luaScript = `
-local balance_key = KEYS[1]
-local used_key = KEYS[2]
-local stream_key = KEYS[3]
-local cost = tonumber(ARGV[1])
-local user_id = ARGV[2]
-local trace_id = ARGV[3]
-local model = ARGV[4]
-local channel_id = ARGV[5]
-local prompt_tokens = ARGV[6]
-local completion_tokens = ARGV[7]
-local token_id = ARGV[8]
-local status_code = ARGV[9]
-local latency_upstream_ms = ARGV[10]
-local latency_proxy_ms = ARGV[11]
-local is_stream = ARGV[12]
-local cached_tokens = ARGV[13]
-
-local current = redis.call('DECRBY', balance_key, cost)
-redis.call('INCRBY', used_key, cost)
-
-redis.call('XADD', stream_key, '*',
-  'trace_id', trace_id,
-  'user_id', user_id,
-  'model', model,
-  'cost', tostring(cost),
-  'channel_id', channel_id,
-  'prompt_tokens', prompt_tokens,
-  'completion_tokens', completion_tokens,
-  'token_id', token_id,
-  'status_code', status_code,
-  'latency_upstream_ms', latency_upstream_ms,
-  'latency_proxy_ms', latency_proxy_ms,
-  'is_stream', is_stream,
-  'cached_tokens', cached_tokens
-)
-
-if current <= 0 then
-  redis.call('RPUSH', 'gateway:events:arrears', user_id)
-  -- 【收尾窗·方案B】封顶 1000 条防孤儿队列无限增长(曾无消费者只进不出);
-  -- 保留队列本身 = 给将来"欠费风控报警/异步摘挂 ARREARS"留钩子喵
-  redis.call('LTRIM', 'gateway:events:arrears', -1000, -1)
-end
-
-return current
-            `;
-
-            const remaining = await redis.eval(
-              luaScript,
-              3,
-              balanceKey, usedKey, streamKey,
-              cost.toString(), user.id, trace_id, model, channelId.toString(),
-              promptTokens.toString(), completionTokens.toString(),
-              user.token_id || '',  // M3: 老缓存无token_id时传空串,worker侧会跳过
-              String(statusCode),                  // F.5: 真实上游 status_code(配合 B2 worker 改成不再硬编码 200)
-              String(latencyUpstreamMs),           // F.5: upstream 上游耗时
-              String(latencyProxyMs),              // F.5: proxy 内部开销
-              String(isStream ? 1 : 0),            // F5.2: 流式响应标志(从响应 Content-Type 推断, 用 L761 isStream)
-              cachedTokens === null ? '' : String(cachedTokens)  // F5.3: 空串=上游未回传 → worker 落 NULL(不用哨兵值, quota 的教训喵)
-            );
-            console.info(`[GATEWAY][扣费+入队完成][${trace_id}] 扣除: ${cost}, 剩余: ${remaining}`);
-
-          } catch (err: any) {
-            console.error(`[GATEWAY][扣费异常][${trace_id}]`, err.stack || err.message);
-          }
-        }, 0);
-      }
-
-      // 阶段7.6 (F.5) - 诊断货架三条件守门 + 异步入架
-      //   ①(零开销): admin 总闸 isDebugCacheEnabled() 读进程内 cache
-      //   ②(一次 SELECT): user.debug_mode_enabled + user.debug_mode_expires_at 两字段, 命中诊断模式窗口期才入架
-      //   ③(委托 debugCache 内部): writeToShelf 自己 XTRIM 控容量, 单条超 MB 上限自动拒
-      // 异步 .catch 吞错: 缓存写入失败绝不影响主响应(诊断功能可降级, 主代理不能挂)
-      const userIdForCache = req.user?.id;
-      if (userIdForCache && cachedResponseBody && isDebugCacheEnabled()) {
-        setTimeout(async () => {
-          try {
-            const [debugRows]: any = await pool.query(
-              'SELECT debug_mode_enabled, debug_mode_expires_at FROM Users WHERE id = ?',
-              [userIdForCache]
-            );
-            if (debugRows.length === 0) return;
-            const u = debugRows[0];
-            if (!u.debug_mode_enabled) return;
-            if (!u.debug_mode_expires_at) return;
-            const userExpiresAtMs = new Date(u.debug_mode_expires_at).getTime();
-            if (userExpiresAtMs < Date.now()) return; // 诊断模式窗口期已过, 不再入架
-
-            // 三条件齐 → 写货架(整窗口期内所有 entry 共享同一个 expires_at, 窗口期结束统一被 purgeExpired 清掉)
-            await writeToShelf(Number(userIdForCache), trace_id, cachedResponseBody, userExpiresAtMs);
-            console.info(`[GATEWAY][F.5货架][${trace_id}] 已入架 ${(Buffer.byteLength(cachedResponseBody, 'utf8') / 1024).toFixed(1)}KB`);
-          } catch (err: any) {
-            console.error(`[GATEWAY][F.5货架][${trace_id}] 写入失败(已吞, 不影响主响应):`, err.message);
-          }
-        }, 0);
-      }
+      // 阶段7.6 (F.5) - 诊断货架入架(F.5.4 抽出为 saveToShelf 闭包, 断连路径也复用)
+      //   三条件守门在闭包内: ①admin 总闸 ②user.debug_mode_* 双字段 ③writeToShelf 内部 XTRIM/MB 上限
+      //   异步 .catch 吞错: 缓存写入失败绝不影响主响应(诊断功能可降级, 主代理不能挂)
+      saveToShelf('正常');
 
       // 阶段7.5 (E.2) - 影子流量复制:把请求/回答的克隆体悄悄塞进队列,worker 会批量搬进 ClickHouse
       // 和扣费一样走异步(setTimeout),绝不拖慢客人收到回答的速度;失败也只记日志,不影响正常服务喵
@@ -1086,6 +1141,39 @@ return current
     } catch (err: any) {
       if (err.name === 'AbortError') {
         console.warn(`[GATEWAY][连接断开][${trace_id}] 客户端主动断开`);
+
+        // F.5.4 断连估费(收断连白嫖漏洞):
+        //   ① activeChannel 为空 = 上游都没接上单 → 整单免收(客人被冤枉了那就完全免费)
+        //   ② 拿到了真实 usage (罕见: usage 事件恰好在断连前一刻到达) → 用真值收, isEstimated=false
+        //   ③ 未拿到 usage → 按已发字符估算, isEstimated=true (前端会亮警告条)
+        //   status_code 用 499 (nginx 惯例: 客户端主动关闭)
+        if (activeChannel && req.user) {
+          const hasRealUsage = promptTokens > 0 || completionTokens > 0;
+          if (hasRealUsage) {
+            console.info(`[GATEWAY][断连估费][${trace_id}] 断连前已拿到真实 usage, 按真值结算`);
+            if (statusCode === 0) statusCode = 499;
+            runBilling(promptTokens, completionTokens, cachedTokens, false);
+          } else {
+            // prompt 侧: 从原始 body.messages 提取全部文本估算(客人送出去的 prompt 上游一定吃了)
+            const promptText = collectMessagesText(body);
+            const estPrompt = estimateTokensFromText(promptText);
+            // completion 侧: 用 SSE 循环里累计的 delta.content 长度估算(不含 SSE 结构冗余)
+            //   /4 与 estimateTokensFromText 里"其他字符 ÷ 4"同口径, 保持"宁少勿多"
+            const estCompletion = Math.floor(estimatedCompletionChars / 4);
+            console.warn(
+              `[GATEWAY][断连估费][${trace_id}] 按字符估算 (低估口径): ` +
+              `prompt≈${estPrompt} tokens (源文 ${promptText.length} 字符), ` +
+              `completion≈${estCompletion} tokens (已发 ${estimatedCompletionChars} 字符)`
+            );
+            if (statusCode === 0) statusCode = 499;
+            runBilling(estPrompt, estCompletion, cachedTokens, true);
+          }
+          // F.5.4 补丁: 断连场景也入诊断货架(小昙原话: 不完整响应恰恰是最有价值的诊断样本)
+          //   闭包内部已有"无内容不入架"守门, 上游啥都没送出来时会安全跳过喵
+          saveToShelf('断连');
+        } else {
+          console.info(`[GATEWAY][断连估费][${trace_id}] 上游未接单, 整单免收`);
+        }
       } else {
         console.error(`[GATEWAY][转发错误][${trace_id}]`, err.stack || err.message);
         if (!reply.sent) {
@@ -1127,5 +1215,31 @@ return current
       console.error(`[GATEWAY][菜单列表][${trace_id}] 异常:`, err.stack || err.message);
       return reply.status(500).send({ error: 'Internal Server Error', message: '菜单暂时拿不出来喵' });
     }
+  });
+  
+  // F.5.5 (v25 §3 #2 销账): 非 chat 端点计费盲区
+  //   喵屋定位: 专职聊天补全中转. 其他 OpenAI 系端点(images/embeddings/audio/moderations/completions/...)
+  //   现状是"无声 404" —— 请求走到 Fastify 兜底, 客人搞不清为什么调不通, 店长也看不到探测尝试.
+  //   本 handler 用 fastify.all 通配挡截: find-my-way 静态路由优先于通配, 所以:
+  //     - POST /v1/chat/completions  → 原主 handler (静态优先)
+  //     - GET  /v1/models            → 原 models handler (静态优先)
+  //     - 其他 /v1/xxx (任何方法)     → 掉进这里, 返回 501 + 日志
+  //   501 Not Implemented (语义: 服务端认识请求但不实现该端点), 中文说明 + 告知已支持的端点,
+  //   帮客户端明确定位问题, 顺便打日志给店长看谁在探测.
+  fastify.all('/v1/*', async (req: FastifyRequest, reply: FastifyReply) => {
+    const method = req.method;
+    const attemptedPath = (req.url || '').split('?')[0];
+    console.warn(`[GATEWAY][端点挡截] 客人尝试访问未支持端点: ${method} ${attemptedPath} — 已返回 501`);
+    return reply.status(501).send({
+      error: {
+        message: `喵屋小店暂时只提供聊天补全服务, 收到的请求 ${method} ${attemptedPath} 不在受理范围内喵~`,
+        type: 'endpoint_not_supported',
+        code: 'ENDPOINT_NOT_SUPPORTED',
+        supported_endpoints: {
+          'POST /v1/chat/completions': '聊天补全 (支持流式 SSE 和多模态)',
+          'GET /v1/models': '查询可用模型菜单',
+        },
+      },
+    });
   });
 }

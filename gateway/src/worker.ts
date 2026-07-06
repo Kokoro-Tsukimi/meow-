@@ -70,6 +70,9 @@ async function processMessage(messageId: string, fields: Record<string, string>)
   const cachedRaw = fields.cached_tokens;
   const parsedCached = cachedRaw !== undefined && cachedRaw !== '' ? parseInt(cachedRaw, 10) : NaN;
   const cached_tokens = Number.isFinite(parsedCached) ? parsedCached : null;
+  // F5.4: 估算账单标记(断连白嫖漏洞的防御标). '1'=估算账单, 其他=正常账单;
+  //   老消息(F5.4 之前残留)无此字段 → 默认 0(非估算), 与历史实情一致喵
+  const is_estimated = fields.is_estimated === '1' ? 1 : 0;
 
   if (!trace_id || !user_id) {
     console.warn(`[WORKER][跳过] 消息 ${messageId} 缺少 trace_id 或 user_id`);
@@ -85,11 +88,12 @@ async function processMessage(messageId: string, fields: Record<string, string>)
     // C+.4 (M2): 补写 prompt_tokens / completion_tokens 两列(以前没传,恒为0)
     // F.5(B2): status_code 不再硬编码 200, 改读消息真实值; 新增 latency_upstream_ms / latency_proxy_ms 两列
     // F5.2: 新增 is_stream 列(流式响应标志)
+    // F5.4: 新增 is_estimated 列(估算账单标记, 断连白嫖漏洞的防御标)
     try {
       await connection.query(
-        `INSERT INTO Logs (trace_id, user_id, channel_id, model, prompt_tokens, cached_tokens, completion_tokens, cost, status_code, latency_upstream_ms, latency_proxy_ms, is_stream, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-        [trace_id, user_id, channel_id, model, prompt_tokens, cached_tokens, completion_tokens, cost, status_code, latency_upstream_ms, latency_proxy_ms, is_stream]
+        `INSERT INTO Logs (trace_id, user_id, channel_id, model, prompt_tokens, cached_tokens, completion_tokens, cost, status_code, latency_upstream_ms, latency_proxy_ms, is_stream, is_estimated, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+        [trace_id, user_id, channel_id, model, prompt_tokens, cached_tokens, completion_tokens, cost, status_code, latency_upstream_ms, latency_proxy_ms, is_stream, is_estimated]
       );
     } catch (e: any) {
       if (e.code === 'ER_DUP_ENTRY') {

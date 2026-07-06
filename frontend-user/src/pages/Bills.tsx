@@ -31,6 +31,7 @@ interface BillDetails {
   latency_upstream_ms: number | null;
   latency_proxy_ms: number | null;
   is_stream: number | null;  // F5.2: 0/1, LEFT JOIN 失配时 null
+  is_estimated: number | null;  // F5.4: 1=估算账单(断连白嫖漏洞防御), 0=正常, LEFT JOIN 失配时 null
 }
 
 // 把账单类型翻译成主人看得懂的文字喵
@@ -316,6 +317,23 @@ export default function Bills() {
 
             {detailData && !detailLoading && !detailError && (
               <div className="space-y-5">
+                {/* F5.4: 估算账单警告条(断连白嫖漏洞防御). 琥珀色 inline style, 不依赖主题 CSS 变量, 深浅两套皮肤通用喵 */}
+                {detailData.is_estimated === 1 && (
+                  <div
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: '10px',
+                      background: 'rgba(251, 191, 36, 0.12)',
+                      border: '1px solid rgba(251, 191, 36, 0.4)',
+                      color: '#d97706',
+                      fontSize: '13px',
+                      lineHeight: '1.6',
+                    }}
+                  >
+                    ⚠️ <strong>估算账单</strong>：此次请求在上游回传完整用量前被断开了喵。
+                    账单按已发出的字符数估算 tokens，原则为“宁少勿多”，实际用量可能略高于此数。
+                  </div>
+                )}
                 {/* ===== 段 ① 基本信息 ===== */}
                 <section>
                   <h3 className="text-sm font-bold meow-accent mb-2 pb-1 meow-section-line">
