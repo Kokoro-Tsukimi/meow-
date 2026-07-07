@@ -15,7 +15,13 @@
 <h1 align="center">喵咖魔法书店<br><sub>Meow Café Magic Bookstore</sub></h1>
 
 <p align="center">
-  <em>**喵咖魔法书店（Meow Café Magic Bookstore）** 是一个自托管的 AI API 网关——为个人和小团队提供统一的多渠道 AI API 接入、精细化计费和可视化管理。</em>
+  <img src="https://img.shields.io/badge/license-AGPL--3.0-ff69b4?style=flat-square" alt="License: AGPL-3.0">
+  <img src="https://img.shields.io/badge/TypeScript-100%25-ffb6c1?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript">
+  <img src="https://img.shields.io/badge/Docker-Ready-ffc0cb?style=flat-square&logo=docker&logoColor=white" alt="Docker Ready">
+</p>
+
+<p align="center">
+  <em><strong>喵咖魔法书店（Meow Café Magic Bookstore）</strong> 是一个自托管的 AI API 网关——为个人和小团队提供统一的多渠道 AI API 接入、精细化计费和可视化管理。</em>
 </p>
 
 ---
