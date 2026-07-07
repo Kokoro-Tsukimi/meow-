@@ -37,6 +37,18 @@
 - 🐳 **Docker 一键启动** — Docker Compose 编排 MySQL / Redis / ClickHouse，双 bat 脚本一键运行
 - ☁️ **Cloudflare Tunnel 发布** — 无需公网 IP，一键发布到自定义域名
 
+<p align="center">
+  <img src="./dashboard.png" alt="Admin 营业总览" width="90%">
+  <br>
+  <em>↑ 店长视角的营业总览：调用统计、咖啡豆消耗、账单一目了然</em>
+</p>
+
+<p align="center">
+  <img src="./settings.png" alt="店规配置" width="90%">
+  <br>
+  <em>↑ 店规配置：诊断模式、限流、配额、签到奖励，每一处细节都在你的掌控之中</em>
+</p>
+
 ---
 
 ## 目录
