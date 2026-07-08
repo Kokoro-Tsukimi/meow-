@@ -276,7 +276,7 @@ export default function Settings() {
               className="text-sm mt-2 leading-relaxed"
               style={{ color: 'var(--m-text-sub)' }}
             >
-              每位用户每分钟最多调用 API 的次数。AI 单条回复通常需要 30-60 秒,5 RPM 已能覆盖 airp 场景。<br />
+              每位用户每分钟最多调用 API 的次数。<br />
               当前生效值:<span className="font-medium">{currentGlobalRpm || '—'} 次 / 分钟</span>
             </p>
             <div className="mt-4 flex items-center gap-3">
@@ -323,7 +323,7 @@ export default function Settings() {
               className="text-sm mt-2 leading-relaxed"
               style={{ color: 'var(--m-text-sub)' }}
             >
-              BLACKLIST 状态用户的独立 RPM 上限(语义:能用但不能滥用)。建议比全站 RPM 更严。<br />
+              BLACKLIST 状态用户的独立 RPM 上限。<br />
               当前生效值:<span className="font-medium">{currentBlacklistRpm || '—'} 次 / 分钟</span>
             </p>
             <div className="mt-4 flex items-center gap-3">
